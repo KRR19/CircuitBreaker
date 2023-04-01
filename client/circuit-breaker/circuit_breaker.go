@@ -1,11 +1,10 @@
 package circuitBreaker
 
 import (
-	"errors"
 	"time"
 )
 
-type CircuitBreakerState int
+type State int
 
 const (
 	StateClosed = iota
@@ -14,7 +13,7 @@ const (
 )
 
 type CircuitBreaker struct {
-	State         CircuitBreakerState
+	State         State
 	FailureCount  int
 	Threshold     int
 	Timeout       time.Duration
@@ -36,37 +35,49 @@ func NewCircuitBreaker(threshold int, timeout time.Duration, defaultAction func(
 func (cb *CircuitBreaker) Call(action func() (string, error)) (string, error) {
 	switch cb.State {
 	case StateClosed:
-		success, err := action()
-		if err != nil {
-			cb.FailureCount++
-			cb.LastFailure = time.Now()
-			if cb.FailureCount >= cb.Threshold {
-				cb.State = StateOpen
-			}
-		} else {
-			cb.FailureCount = 0
-		}
-		return success, err
-
+		return cb.stateClosedBehaviour(action)
 	case StateOpen:
-		if time.Since(cb.LastFailure) >= cb.Timeout {
-			cb.State = StateHalfOpen
-			return cb.Call(action)
-		}
-		return cb.DefaultAction()
-
+		return cb.stateOpenBehaviour(action)
 	case StateHalfOpen:
-		success, err := action()
-		if err != nil {
-			cb.State = StateOpen
-			cb.LastFailure = time.Now()
-			return cb.DefaultAction()
-		}
-		cb.State = StateClosed
-		cb.FailureCount = 0
-
-		return success, err
+		return cb.stateHalfOpenBehaviour(action)
 	}
 
-	return "", errors.New("unknown circuit breaker state")
+	panic("unknown circuit breaker state")
+}
+
+func (cb *CircuitBreaker) stateClosedBehaviour(action func() (string, error)) (string, error) {
+	success, err := action()
+	if err != nil {
+		cb.FailureCount++
+		cb.LastFailure = time.Now()
+		if cb.FailureCount >= cb.Threshold {
+			cb.State = StateOpen
+			return cb.DefaultAction()
+		}
+		return cb.stateClosedBehaviour(action)
+	}
+	cb.FailureCount = 0
+	return success, err
+}
+
+func (cb *CircuitBreaker) stateOpenBehaviour(action func() (string, error)) (string, error) {
+	if time.Since(cb.LastFailure) >= cb.Timeout {
+		cb.State = StateHalfOpen
+		return cb.stateHalfOpenBehaviour(action)
+	}
+
+	return cb.DefaultAction()
+}
+
+func (cb *CircuitBreaker) stateHalfOpenBehaviour(action func() (string, error)) (string, error) {
+	success, err := action()
+	if err != nil {
+		cb.State = StateOpen
+		cb.LastFailure = time.Now()
+		return cb.DefaultAction()
+	}
+	cb.State = StateClosed
+	cb.FailureCount = 0
+
+	return success, err
 }

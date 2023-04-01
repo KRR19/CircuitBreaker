@@ -2,15 +2,16 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 )
 
-var isStoped bool
+var isStopped bool
 
 func main() {
 	http.HandleFunc("/hello", func(writer http.ResponseWriter, request *http.Request) {
-		if isStoped {
+		if isStopped {
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -19,9 +20,9 @@ func main() {
 	})
 	go func() {
 		for range time.Tick(4 * time.Second) {
-			isStoped = !isStoped
-			fmt.Println("Is server works: ", isStoped)
+			isStopped = !isStopped
+			fmt.Println("Is server works: ", isStopped)
 		}
 	}()
-	http.ListenAndServe(":8081", nil)
+	log.Fatal(http.ListenAndServe(":8081", nil))
 }
