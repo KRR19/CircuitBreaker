@@ -12,17 +12,17 @@ const (
 	StateHalfOpen
 )
 
-type CircuitBreaker struct {
+type CircuitBreaker[T any] struct {
 	State         State
 	FailureCount  int
 	Threshold     int
 	Timeout       time.Duration
 	LastFailure   time.Time
-	DefaultAction func() (string, error)
+	DefaultAction func() (T, error)
 }
 
-func NewCircuitBreaker(threshold int, timeout time.Duration, defaultAction func() (string, error)) *CircuitBreaker {
-	return &CircuitBreaker{
+func NewCircuitBreaker[T any](threshold int, timeout time.Duration, defaultAction func() (T, error)) *CircuitBreaker[T] {
+	return &CircuitBreaker[T]{
 		State:         StateClosed,
 		FailureCount:  0,
 		Threshold:     threshold,
@@ -32,7 +32,7 @@ func NewCircuitBreaker(threshold int, timeout time.Duration, defaultAction func(
 	}
 }
 
-func (cb *CircuitBreaker) Call(action func() (string, error)) (string, error) {
+func (cb *CircuitBreaker[T]) Call(action func() (T, error)) (T, error) {
 	switch cb.State {
 	case StateClosed:
 		return cb.stateClosedBehaviour(action)
@@ -45,7 +45,7 @@ func (cb *CircuitBreaker) Call(action func() (string, error)) (string, error) {
 	panic("unknown circuit breaker state")
 }
 
-func (cb *CircuitBreaker) stateClosedBehaviour(action func() (string, error)) (string, error) {
+func (cb *CircuitBreaker[T]) stateClosedBehaviour(action func() (T, error)) (T, error) {
 	success, err := action()
 	if err != nil {
 		cb.FailureCount++
@@ -60,7 +60,7 @@ func (cb *CircuitBreaker) stateClosedBehaviour(action func() (string, error)) (s
 	return success, err
 }
 
-func (cb *CircuitBreaker) stateOpenBehaviour(action func() (string, error)) (string, error) {
+func (cb *CircuitBreaker[T]) stateOpenBehaviour(action func() (T, error)) (T, error) {
 	if time.Since(cb.LastFailure) >= cb.Timeout {
 		cb.State = StateHalfOpen
 		return cb.stateHalfOpenBehaviour(action)
@@ -69,7 +69,7 @@ func (cb *CircuitBreaker) stateOpenBehaviour(action func() (string, error)) (str
 	return cb.DefaultAction()
 }
 
-func (cb *CircuitBreaker) stateHalfOpenBehaviour(action func() (string, error)) (string, error) {
+func (cb *CircuitBreaker[T]) stateHalfOpenBehaviour(action func() (T, error)) (T, error) {
 	success, err := action()
 	if err != nil {
 		cb.State = StateOpen
