@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	circuitBreaker "github.com/KRR19/CircuitBreaker/client/circuit-breaker"
 	"net/http"
+	"time"
 )
 
 func sendRequest() (string, error) {
@@ -15,8 +17,9 @@ func sendRequest() (string, error) {
 }
 
 func main() {
-	for i := 0; i < 10000000; i++ {
-		result, err := sendRequest()
+	cb := circuitBreaker.NewCircuitBreaker(5, 2*time.Second)
+	for i := 0; i < 100000; i++ {
+		result, err := cb.Call(sendRequest)
 		if err != nil {
 			fmt.Println("Error")
 			continue
