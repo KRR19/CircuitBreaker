@@ -13,6 +13,7 @@ func main() {
 	http.HandleFunc("/hello", func(writer http.ResponseWriter, request *http.Request) {
 		if isStopped {
 			writer.WriteHeader(http.StatusInternalServerError)
+
 			return
 		}
 		writer.Header().Add("Result", "Hello")

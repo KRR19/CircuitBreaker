@@ -3,9 +3,10 @@ package main
 import (
 	"errors"
 	"fmt"
-	circuitBreaker "github.com/KRR19/CircuitBreaker/client/circuit-breaker"
 	"net/http"
 	"time"
+
+	circuitBreaker "github.com/KRR19/CircuitBreaker/client/circuit-breaker"
 )
 
 func sendRequest() (string, error) {
@@ -27,6 +28,7 @@ func main() {
 		result, err := cb.Call(sendRequest)
 		if err != nil {
 			fmt.Println("Error")
+
 			continue
 		}
 		fmt.Println(result)

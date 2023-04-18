@@ -1,4 +1,4 @@
-package circuitBreaker
+package circuitbreaker
 
 import (
 	"time"
@@ -50,19 +50,25 @@ func (cb *CircuitBreaker[T]) stateClosedBehaviour(action func() (T, error)) (T, 
 	if err != nil {
 		cb.FailureCount++
 		cb.LastFailure = time.Now()
+
 		if cb.FailureCount >= cb.Threshold {
 			cb.State = StateOpen
+
 			return cb.DefaultAction()
 		}
+
 		return cb.stateClosedBehaviour(action)
 	}
+
 	cb.FailureCount = 0
+
 	return success, err
 }
 
 func (cb *CircuitBreaker[T]) stateOpenBehaviour(action func() (T, error)) (T, error) {
 	if time.Since(cb.LastFailure) >= cb.Timeout {
 		cb.State = StateHalfOpen
+
 		return cb.stateHalfOpenBehaviour(action)
 	}
 
@@ -74,8 +80,10 @@ func (cb *CircuitBreaker[T]) stateHalfOpenBehaviour(action func() (T, error)) (T
 	if err != nil {
 		cb.State = StateOpen
 		cb.LastFailure = time.Now()
+
 		return cb.DefaultAction()
 	}
+
 	cb.State = StateClosed
 	cb.FailureCount = 0
 
